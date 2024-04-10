@@ -4,10 +4,10 @@ from typing import List
 from transformers import Trainer, TrainingArguments
 from transformers import pipeline
 
-def finetune_distilbert(model_name:str,all_text_list:List[str],logging_name:str):
+def finetune_distilbert_gpt2(model_name:str,all_text_list:List[str],logging_name:str):
     # model_name = "distilbert/distilgpt2"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name,trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(model_name,trust_remote_code=True)
 
     lm_datasets = tokenize_dataset(all_text_list,tokenizer)
     training_args = TrainingArguments(
