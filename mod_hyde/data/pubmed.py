@@ -29,12 +29,13 @@ def is_file_empty(file_path):
 
 if not os.path.exists(f"pubmed_abstract_{start_idx}_{end_idx}.csv"):
     df = pd.DataFrame(columns=["url","pid","abstract"],index=None)
+    df.to_csv(f"pubmed_abstract_{start_idx}_{end_idx}.csv",index=False,header=True)
 else:
     df = pd.read_csv(f"pubmed_abstract_{start_idx}_{end_idx}.csv",index_col=False)
 
 for idx,pid in enumerate(all_pubmed_ids[start_idx:end_idx]):
-    if not is_file_empty("done.txt"):
-        with open(f"done.txt","r") as f:
+    if not is_file_empty(f"done_{start_idx}_{end_idx}.txt"):
+        with open(f"done_{start_idx}_{end_idx}.txt","r") as f:
             done_pids = [int(x) for x in f.read().splitlines()]
         # print(done_pids)
         if pid in done_pids: 
@@ -53,7 +54,7 @@ for idx,pid in enumerate(all_pubmed_ids[start_idx:end_idx]):
     # df_dict['abstract'].append(s[0]['Summary'])
     time.sleep(1)
     pbar.update(1)
-    with open(f"done.txt","a") as f:
+    with open(f"done_{start_idx}_{end_idx}.txt","a") as f:
         f.write(f"{pid}\n")
     df = pd.DataFrame(df_dict)
     
