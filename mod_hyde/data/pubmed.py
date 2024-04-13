@@ -21,8 +21,8 @@ all_pubmed_ids = [x['pubid'] for x in pubmed_qa['train']]
 tool = PubMedAPIWrapper(email="athekunal@gmail.com",sleep_time=1)
 pbar = tqdm(total=len(all_pubmed_ids[start_idx:end_idx]),desc="Pubmed Summary")
 
-if not os.path.exists(f"done.txt"):
-    os.mknod(f"done.txt")
+if not os.path.exists(f"done_{start_idx}_{end_idx}.txt"):
+    os.mknod(f"done_{start_idx}_{end_idx}.txt")
 
 def is_file_empty(file_path):
     return os.path.getsize(file_path) == 0
