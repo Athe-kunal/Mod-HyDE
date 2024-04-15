@@ -12,7 +12,7 @@ from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, Lor
 
 parser = argparse.ArgumentParser(description='Finetune the model')
 parser.add_argument("-m","--model", type=str,help="Name of the model for finetuning on the raw texts")
-parser.add_argument("-bs","--block_size", type=int, help="Block size for the finetuning")
+parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning")
 parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter")
 parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=1750)
 parser.add_argument("-co","--chunk_overlap",type=int, help="Chunksize overlap of the raw texts",default=100)
