@@ -74,12 +74,16 @@ def tokenize_dataset(all_text_list:List[str],tokenizer):
 
 
 def main(all_text_list):
+    if args.finetuning_type != "full_parameter" or args.finetuning_type != "lora":
+        load_in_4bit = False
+    else:
+        load_in_4bit = True
     if args.model == "tinyllama":
         model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/tinyllama", # Supports Llama, Mistral - replace this!
         max_seq_length = args.block_size,
         dtype = None,
-        load_in_4bit = True,
+        load_in_4bit = load_in_4bit,
     )
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             model = FastLanguageModel.get_peft_model(
@@ -100,7 +104,7 @@ def main(all_text_list):
         model_name = "unsloth/phi-2", # Supports Llama, Mistral - replace this!
         max_seq_length = args.block_size,
         dtype = None,
-        load_in_4bit = True,
+        load_in_4bit = load_in_4bit,
     )
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             model = FastLanguageModel.get_peft_model(
@@ -121,7 +125,7 @@ def main(all_text_list):
         model_name = "unsloth/gemma-2b", # Supports Llama, Mistral - replace this!
         max_seq_length = args.block_size,
         dtype = None,
-        load_in_4bit = True,
+        load_in_4bit = load_in_4bit,
     )
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             model = FastLanguageModel.get_peft_model(
@@ -143,7 +147,7 @@ def main(all_text_list):
             qwen_model = "Qwen/Qwen1.5-1.8B"
         elif args.model == "qwensmall":
             qwen_model = "Qwen/Qwen1.5-0.5B"
-        tokenizer = AutoTokenizer.from_pretrained(qwen_model)
+        tokenizer = AutoTokenizer.from_pretrained(qwen_model,load_in_4bit=load_in_4bit)
         model = AutoModelForCausalLM.from_pretrained(qwen_model)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             peft_config = LoraConfig(inference_mode=False, target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
