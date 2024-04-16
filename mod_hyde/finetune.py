@@ -63,12 +63,11 @@ def tokenize_dataset(all_text_list:List[str],tokenizer):
     hf_dataset = get_hf_dataset(all_text_list)
     def tokenize_function(examples):
         return tokenizer(examples["text"])
-    tokenized_datasets = hf_dataset.map(tokenize_function, batched=True, num_proc=args.num_proc, remove_columns=["text"])
+    tokenized_datasets = hf_dataset.map(tokenize_function, batched=True, remove_columns=["text"])
     lm_datasets = tokenized_datasets.map(
         group_texts,
         batched=True,
         batch_size=args.tokenizer_batch_size,
-        num_proc=args.num_proc,
     )
     return lm_datasets
 
