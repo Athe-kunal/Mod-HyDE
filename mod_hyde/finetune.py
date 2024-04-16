@@ -79,13 +79,17 @@ def main(all_text_list):
     else:
         load_in_4bit = True
     if args.model == "tinyllama":
-        model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/tinyllama", # Supports Llama, Mistral - replace this!
-        max_seq_length = args.block_size,
-        dtype = None,
-        load_in_4bit = load_in_4bit,
-    )
+        if args.finetuning_type == "full_parameter":
+            model_name = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
+            tokenizer = AutoTokenizer.from_pretrained(model_name,load_in_4bit=load_in_4bit)
+            model = AutoModelForCausalLM.from_pretrained(model_name)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
+            model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name = "unsloth/tinyllama", # Supports Llama, Mistral - replace this!
+            max_seq_length = args.block_size,
+            dtype = None,
+            load_in_4bit = load_in_4bit,
+        )
             model = FastLanguageModel.get_peft_model(
                 model,
                 r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
@@ -100,13 +104,18 @@ def main(all_text_list):
                 loftq_config = None, # And LoftQ
             )
     elif args.model == "phi2":
-        model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/phi-2", # Supports Llama, Mistral - replace this!
-        max_seq_length = args.block_size,
-        dtype = None,
-        load_in_4bit = load_in_4bit,
-    )
+        if args.finetuning_type == "full_parameter":
+            model_name = "microsoft/phi-2"
+            tokenizer = AutoTokenizer.from_pretrained(model_name,load_in_4bit=load_in_4bit)
+            model = AutoModelForCausalLM.from_pretrained(model_name)
+
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
+            model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name = "unsloth/phi-2", # Supports Llama, Mistral - replace this!
+            max_seq_length = args.block_size,
+            dtype = None,
+            load_in_4bit = load_in_4bit,
+        )
             model = FastLanguageModel.get_peft_model(
                 model,
                 r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
@@ -121,13 +130,17 @@ def main(all_text_list):
                 loftq_config = None, # And LoftQ
             )
     elif args.model == "gemma":
-        model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/gemma-2b", # Supports Llama, Mistral - replace this!
-        max_seq_length = args.block_size,
-        dtype = None,
-        load_in_4bit = load_in_4bit,
-    )
+        if args.finetuning_type == "full_parameter":
+            model_name = "google/gemma-2b"
+            tokenizer = AutoTokenizer.from_pretrained(model_name,load_in_4bit=load_in_4bit)
+            model = AutoModelForCausalLM.from_pretrained(model_name)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
+            model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name = "unsloth/gemma-2b", # Supports Llama, Mistral - replace this!
+            max_seq_length = args.block_size,
+            dtype = None,
+            load_in_4bit = load_in_4bit,
+        )
             model = FastLanguageModel.get_peft_model(
                 model,
                 r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
@@ -184,7 +197,7 @@ def main(all_text_list):
 
         trainer.save_model(f"{args.model}-full-parameter-{args.block_size}")
     
-    elif args.finetuning_type != "full_parameter":
+    elif args.finetuning_type != "lora" and args.finetuning_type != "qlora":
         trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.block_size}")
 
 
