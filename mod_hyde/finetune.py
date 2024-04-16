@@ -81,8 +81,8 @@ def main(all_text_list):
     if args.model == "tinyllama":
         if args.finetuning_type == "full_parameter":
             model_name = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
-            tokenizer = AutoTokenizer.from_pretrained(model_name,load_in_4bit=load_in_4bit)
-            model = AutoModelForCausalLM.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             model, tokenizer = FastLanguageModel.from_pretrained(
             model_name = "unsloth/tinyllama", # Supports Llama, Mistral - replace this!
@@ -106,8 +106,8 @@ def main(all_text_list):
     elif args.model == "phi2":
         if args.finetuning_type == "full_parameter":
             model_name = "microsoft/phi-2"
-            tokenizer = AutoTokenizer.from_pretrained(model_name,load_in_4bit=load_in_4bit)
-            model = AutoModelForCausalLM.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
 
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             model, tokenizer = FastLanguageModel.from_pretrained(
@@ -121,7 +121,7 @@ def main(all_text_list):
                 r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
                 target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                                 "gate_proj", "up_proj", "down_proj",],
-                lora_alpha = 32,
+                lora_alpha = args.alpha,
                 lora_dropout = 0, # Currently only supports dropout = 0
                 bias = "none",    # Currently only supports bias = "none"
                 use_gradient_checkpointing = True, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
@@ -132,8 +132,8 @@ def main(all_text_list):
     elif args.model == "gemma":
         if args.finetuning_type == "full_parameter":
             model_name = "google/gemma-2b"
-            tokenizer = AutoTokenizer.from_pretrained(model_name,load_in_4bit=load_in_4bit)
-            model = AutoModelForCausalLM.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             model, tokenizer = FastLanguageModel.from_pretrained(
             model_name = "unsloth/gemma-2b", # Supports Llama, Mistral - replace this!
@@ -160,7 +160,7 @@ def main(all_text_list):
             qwen_model = "Qwen/Qwen1.5-1.8B"
         elif args.model == "qwensmall":
             qwen_model = "Qwen/Qwen1.5-0.5B"
-        tokenizer = AutoTokenizer.from_pretrained(qwen_model,load_in_4bit=load_in_4bit)
+        tokenizer = AutoTokenizer.from_pretrained(qwen_model)
         model = AutoModelForCausalLM.from_pretrained(qwen_model)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             peft_config = LoraConfig(inference_mode=False, target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
@@ -201,4 +201,19 @@ def main(all_text_list):
         trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.block_size}")
 
 
+if __name__ == "__main__":
+    import json
+    with open("data/all_book_data.txt","r") as f:
+        all_books_data = f.read()
 
+    youtube_transcripts_list = ["chunked_misc_transcripts.json","chunked_transcripts_undergrad.json","chunked_transcripts_mba.json"]
+    all_youtube_data = []
+    for file in youtube_transcripts_list:
+        with open('data/YouTube_API_Transcripts/'+file) as f:
+            data = json.load(f)
+        for id,data in data.items():
+            for d in data:
+                all_youtube_data.append(d['text'])
+    books_data_splitted_text = split_text(all_books_data)
+    all_text_list = books_data_splitted_text + all_youtube_data
+    main(all_text_list)
