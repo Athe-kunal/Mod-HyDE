@@ -1,19 +1,19 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import List
 from datasets import Dataset
 import pandas as pd
 from config import *
 import argparse
-from unsloth import FastLanguageModel
+# from unsloth import FastLanguageModel
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, Qwen2Tokenizer, Qwen2ForCausalLM
 from transformers import Trainer, TrainingArguments
-from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, LoraConfig, TaskType
+# from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, LoraConfig, TaskType
 
 parser = argparse.ArgumentParser(description='Finetune the model')
 parser.add_argument("-m","--model", type=str,help="Name of the model for finetuning on the raw texts")
 parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=1024)
-parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter")
+parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter",default="full_parameter")
 parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=1750)
 parser.add_argument("-co","--chunk_overlap",type=int, help="Chunksize overlap of the raw texts",default=100)
 parser.add_argument("-tbs","--tokenizer_batch_size",type=int, help="Batch size of tokenization",default=2000)
@@ -94,92 +94,14 @@ def main(all_text_list):
         load_in_4bit = False
     else:
         load_in_4bit = True
-    if args.model == "tinyllama":
-        if args.finetuning_type == "full_parameter":
-            model_name = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
-        if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
-            model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = "unsloth/tinyllama", # Supports Llama, Mistral - replace this!
-            max_seq_length = args.block_size,
-            dtype = None,
-            load_in_4bit = False,
-        )
-            model = FastLanguageModel.get_peft_model(
-                model,
-                r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                                "gate_proj", "up_proj", "down_proj",],
-                lora_alpha = args.alpha,
-                lora_dropout = 0, # Currently only supports dropout = 0
-                bias = "none",    # Currently only supports bias = "none"
-                # use_gradient_checkpointing = False, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                use_gradient_checkpointing = False, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                random_state = 3407,
-                use_rslora = False,  # We support rank stabilized LoRA
-                loftq_config = None, # And LoftQ
-            )
-    elif args.model == "phi2":
-        if args.finetuning_type == "full_parameter":
-            model_name = "microsoft/phi-2"
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
 
-        if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
-            model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = "unsloth/phi-2", # Supports Llama, Mistral - replace this!
-            max_seq_length = args.block_size,
-            dtype = None,
-            load_in_4bit = load_in_4bit,
-        )
-            model = FastLanguageModel.get_peft_model(
-                model,
-                r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                                "gate_proj", "up_proj", "down_proj",],
-                lora_alpha = args.alpha,
-                lora_dropout = 0, # Currently only supports dropout = 0
-                bias = "none",    # Currently only supports bias = "none"
-                use_gradient_checkpointing = True, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                random_state = 3407,
-                use_rslora = False,  # We support rank stabilized LoRA
-                loftq_config = None, # And LoftQ
-            )
-    elif args.model == "gemma":
-        if args.finetuning_type == "full_parameter":
-            model_name = "google/gemma-2b"
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
-        if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
-            model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = "unsloth/gemma-2b", # Supports Llama, Mistral - replace this!
-            max_seq_length = args.block_size,
-            dtype = None,
-            load_in_4bit = load_in_4bit,
-        )
-            model = FastLanguageModel.get_peft_model(
-                model,
-                r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                                "gate_proj", "up_proj", "down_proj",],
-                lora_alpha = args.alpha,
-                lora_dropout = 0, # Currently only supports dropout = 0
-                bias = "none",    # Currently only supports bias = "none"
-                # use_gradient_checkpointing = False, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                use_gradient_checkpointing = "unsloth", # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                random_state = 3407,
-                use_rslora = False,  # We support rank stabilized LoRA
-                loftq_config = None, # And LoftQ
-            )
-
-    elif args.model == "qwenbig" or args.model == "qwensmall":
+    if args.model == "qwenbig" or args.model == "qwensmall":
         if args.model == "qwenbig":
             qwen_model = "Qwen/Qwen1.5-1.8B"
         elif args.model == "qwensmall":
             qwen_model = "Qwen/Qwen1.5-0.5B"
-        tokenizer = AutoTokenizer.from_pretrained(qwen_model)
-        model = AutoModelForCausalLM.from_pretrained(qwen_model)
+        tokenizer = Qwen2Tokenizer.from_pretrained(qwen_model,attn_implementation="flash_attention_2",trust_remote_code=True)
+        model = Qwen2ForCausalLM.from_pretrained(qwen_model,trust_remote_code=True)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             peft_config = LoraConfig(inference_mode=False, target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                                 "gate_proj", "up_proj", "down_proj"],r=args.rank, lora_alpha=args.alpha, lora_dropout=0.0)
@@ -193,9 +115,9 @@ def main(all_text_list):
     lm_datasets = tokenize_dataset(all_text_list,tokenizer)
     
     training_args = TrainingArguments(
-        output_dir=f"{args.model}-{args.finetuning_type}-{args.rank}",
+        output_dir=f"{args.model}-{args.finetuning_type}",
         num_train_epochs=args.num_train_epochs,
-        # torch_compile=True,
+        torch_compile=True,
         per_device_train_batch_size=args.batch_size,
         fp16 = not torch.cuda.is_bf16_supported(),
         learning_rate=args.learning_rate,
@@ -204,6 +126,7 @@ def main(all_text_list):
         lr_scheduler_type= 'cosine',
         optim = "paged_adamw_32bit",
         seed = 42,
+        # tf32=True,
         gradient_accumulation_steps = 1,save_strategy='epoch')
     
     trainer = Trainer(
@@ -212,11 +135,10 @@ def main(all_text_list):
         train_dataset=lm_datasets
     )
     
-    # trainer.train()
-    trainer.train(resume_from_checkpoint = True)
+    trainer.train()
     if args.finetuning_type != "full_parameter":
 
-        trainer.save_model(f"{args.model}-full-parameter-{args.block_size}")
+        trainer.save_model(f"{args.model}-{args.finetuning_type}")
     
     elif args.finetuning_type != "lora" and args.finetuning_type != "qlora":
         trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.block_size}-{args.num_train_epochs}")
