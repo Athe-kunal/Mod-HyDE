@@ -214,12 +214,12 @@ def main(all_text_list):
     
     # trainer.train()
     trainer.train(resume_from_checkpoint = True)
-    if args.finetuning_type != "full_parameter":
+    # if args.finetuning_type != "full_parameter":
 
-        trainer.save_model(f"{args.model}-full-parameter-{args.block_size}")
+    #     trainer.save_model(f"{args.model}-full-parameter-{args.block_size}")
     
-    elif args.finetuning_type != "lora" and args.finetuning_type != "qlora":
-        trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.block_size}-{args.num_train_epochs}")
+    # elif args.finetuning_type != "lora" and args.finetuning_type != "qlora":
+    #     trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.num_train_epochs}")
 
 
 if __name__ == "__main__":
