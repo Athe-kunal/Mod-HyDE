@@ -100,8 +100,8 @@ def main(all_text_list):
             qwen_model = "Qwen/Qwen1.5-1.8B"
         elif args.model == "qwensmall":
             qwen_model = "Qwen/Qwen1.5-0.5B"
-        tokenizer = Qwen2Tokenizer.from_pretrained(qwen_model,trust_remote_code=True)
-        model = Qwen2ForCausalLM.from_pretrained(qwen_model,attn_implementation="flash_attention_2",trust_remote_code=True)
+        tokenizer = Qwen2Tokenizer.from_pretrained(qwen_model,attn_implementation="flash_attention_2",trust_remote_code=True)
+        model = Qwen2ForCausalLM.from_pretrained(qwen_model,trust_remote_code=True)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             peft_config = LoraConfig(inference_mode=False, target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                                 "gate_proj", "up_proj", "down_proj"],r=args.rank, lora_alpha=args.alpha, lora_dropout=0.0)
@@ -135,7 +135,7 @@ def main(all_text_list):
         train_dataset=lm_datasets
     )
     
-    trainer.train()
+    trainer.train(resume_from_checkpoint = True)
     if args.finetuning_type != "full_parameter":
 
         trainer.save_model(f"{args.model}-{args.finetuning_type}")
