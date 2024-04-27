@@ -12,7 +12,7 @@ from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, Lor
 
 parser = argparse.ArgumentParser(description='Finetune the model')
 parser.add_argument("-m","--model", type=str,help="Name of the model for finetuning on the raw texts")
-parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=1024)
+parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=2048)
 parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter")
 parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=1750)
 parser.add_argument("-co","--chunk_overlap",type=int, help="Chunksize overlap of the raw texts",default=100)
@@ -22,6 +22,7 @@ parser.add_argument("-bs","--batch_size",type=int, help="Batch size of finetunin
 parser.add_argument("-nte","--num_train_epochs",type=int, help="Number of training epochs",default=1)
 parser.add_argument("-r","--rank",type=int, help="Number of ranks",default=16)
 parser.add_argument("-a","--alpha",type=int, help="LoRA alpha",default=16)
+parser.add_argument("-re","--rerun",type=bool, help="Rerun from checkpoint",default=False)
 parser.add_argument("-lr","--learning_rate",type=float, help="Learning rate",default=2e-5)
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -212,8 +213,10 @@ def main(all_text_list):
         train_dataset=lm_datasets
     )
     
-    # trainer.train()
-    trainer.train(resume_from_checkpoint = True)
+    if args.rerun:
+        trainer.train(resume_from_checkpoint = True)
+    else:
+        trainer.train()
     # if args.finetuning_type != "full_parameter":
 
     #     trainer.save_model(f"{args.model}-full-parameter-{args.block_size}")
@@ -224,9 +227,12 @@ def main(all_text_list):
 
 if __name__ == "__main__":
     # import json
-    with open("data/pubmed.txt","r") as f:
-        all_text_list = f.readlines()
-
+    # with open("data/pubmed.txt","r") as f:
+    #     all_text_list = f.readlines()
+    with open("data/wikipedia_filtered_english.txt","r") as f:
+        all_text = f.read()
+    all_text_list = all_text.split("-----------")[:-1]
+    all_text_list = [at.strip() for at in all_text_list]
     # youtube_transcripts_list = ["chunked_misc_transcripts.json","chunked_transcripts_undergrad.json","chunked_transcripts_mba.json"]
     # all_youtube_data = []
     # for file in youtube_transcripts_list:
