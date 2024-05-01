@@ -6,13 +6,13 @@ from config import *
 import argparse
 from unsloth import FastLanguageModel
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from transformers import Trainer, TrainingArguments
 from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, LoraConfig, TaskType
 
 parser = argparse.ArgumentParser(description='Finetune the model')
 parser.add_argument("-m","--model", type=str,help="Name of the model for finetuning on the raw texts")
-parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=2048)
+parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=1024)
 parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter")
 parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=1750)
 parser.add_argument("-co","--chunk_overlap",type=int, help="Chunksize overlap of the raw texts",default=100)
@@ -22,10 +22,8 @@ parser.add_argument("-bs","--batch_size",type=int, help="Batch size of finetunin
 parser.add_argument("-nte","--num_train_epochs",type=int, help="Number of training epochs",default=1)
 parser.add_argument("-r","--rank",type=int, help="Number of ranks",default=16)
 parser.add_argument("-a","--alpha",type=int, help="LoRA alpha",default=16)
-parser.add_argument("-re","--rerun",type=bool, help="Rerun from checkpoint",default=False)
 parser.add_argument("-lr","--learning_rate",type=float, help="Learning rate",default=2e-5)
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
+
 args = parser.parse_args()
 
 def split_text(text):
@@ -91,6 +89,13 @@ def tokenize_dataset(all_text_list:List[str],tokenizer):
 
 
 def main(all_text_list):
+
+    free_in_GB = int(torch.cuda.mem_get_info()[0] / 1024**3)
+    max_memory = f"{free_in_GB-2}GB"
+
+    n_gpus = torch.cuda.device_count()
+    max_memory = {i: max_memory for i in range(n_gpus)}
+    max_memory["cpu"] = "100GB"
     if args.finetuning_type != "full_parameter" or args.finetuning_type != "lora":
         load_in_4bit = False
     else:
@@ -101,26 +106,34 @@ def main(all_text_list):
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             model = AutoModelForCausalLM.from_pretrained(model_name,load_in_4bit=load_in_4bit)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
-            model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = "unsloth/tinyllama", # Supports Llama, Mistral - replace this!
-            max_seq_length = args.block_size,
-            dtype = None,
-            load_in_4bit = False,
-        )
-            model = FastLanguageModel.get_peft_model(
-                model,
-                r = args.rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                                "gate_proj", "up_proj", "down_proj",],
-                lora_alpha = args.alpha,
-                lora_dropout = 0, # Currently only supports dropout = 0
-                bias = "none",    # Currently only supports bias = "none"
-                # use_gradient_checkpointing = False, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                use_gradient_checkpointing = False, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                random_state = 3407,
-                use_rslora = False,  # We support rank stabilized LoRA
-                loftq_config = None, # And LoftQ
+            model_name = "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T"
+            model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            max_memory=max_memory,
+            quantization_config=BitsAndBytesConfig(
+                load_in_4bit=True,
+                llm_int8_threshold=6.0,
+                llm_int8_has_fp16_weight=False,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+            ),
+            torch_dtype=torch.float16,
             )
+
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            config = LoraConfig(
+                r=args.rank,
+                lora_alpha=args.alpha,
+                target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                                "gate_proj", "up_proj", "down_proj",],
+                lora_dropout=0,
+                bias="none",
+                task_type="CAUSAL_LM",
+                # use_gradient_checkpointing = True,
+            )
+            model = get_peft_model(model, config)
+
     elif args.model == "phi2":
         if args.finetuning_type == "full_parameter":
             model_name = "microsoft/phi-2"
@@ -167,8 +180,7 @@ def main(all_text_list):
                 lora_alpha = args.alpha,
                 lora_dropout = 0, # Currently only supports dropout = 0
                 bias = "none",    # Currently only supports bias = "none"
-                # use_gradient_checkpointing = False, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
-                use_gradient_checkpointing = "unsloth", # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
+                use_gradient_checkpointing = True, # @@@ IF YOU GET OUT OF MEMORY - set to True @@@
                 random_state = 3407,
                 use_rslora = False,  # We support rank stabilized LoRA
                 loftq_config = None, # And LoftQ
@@ -194,9 +206,8 @@ def main(all_text_list):
     lm_datasets = tokenize_dataset(all_text_list,tokenizer)
     
     training_args = TrainingArguments(
-        output_dir=f"{args.model}-{args.finetuning_type}-{args.rank}",
+        output_dir=f"{args.model}-{args.finetuning_type}-base",
         num_train_epochs=args.num_train_epochs,
-        # torch_compile=True,
         per_device_train_batch_size=args.batch_size,
         fp16 = not torch.cuda.is_bf16_supported(),
         learning_rate=args.learning_rate,
@@ -205,7 +216,7 @@ def main(all_text_list):
         lr_scheduler_type= 'cosine',
         optim = "paged_adamw_32bit",
         seed = 42,
-        gradient_accumulation_steps = 1,save_strategy='epoch')
+        gradient_accumulation_steps = 1,report_to=None,gradient_checkpointing=True)
     
     trainer = Trainer(
         model=model,
@@ -213,26 +224,20 @@ def main(all_text_list):
         train_dataset=lm_datasets
     )
     
-    if args.rerun:
-        trainer.train(resume_from_checkpoint = True)
-    else:
-        trainer.train()
+    trainer.train()
     # if args.finetuning_type != "full_parameter":
 
     #     trainer.save_model(f"{args.model}-full-parameter-{args.block_size}")
     
     # elif args.finetuning_type != "lora" and args.finetuning_type != "qlora":
-    #     trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.num_train_epochs}")
+    #     trainer.save_model(f"{args.model}-{args.finetuning_type}-{args.block_size}-{args.num_train_epochs}")
 
 
 if __name__ == "__main__":
     # import json
-    # with open("data/pubmed.txt","r") as f:
-    #     all_text_list = f.readlines()
-    with open("data/wikipedia_filtered_english.txt","r") as f:
-        all_text = f.read()
-    all_text_list = all_text.split("-----------")[:-1]
-    all_text_list = [at.strip() for at in all_text_list]
+    with open("data/pubmed.txt","r") as f:
+        all_text_list = f.readlines()
+
     # youtube_transcripts_list = ["chunked_misc_transcripts.json","chunked_transcripts_undergrad.json","chunked_transcripts_mba.json"]
     # all_youtube_data = []
     # for file in youtube_transcripts_list:
