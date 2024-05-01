@@ -14,9 +14,9 @@ import json
 parser = argparse.ArgumentParser(description='Finetune the model')
 parser.add_argument("-m","--model", type=str,help="Name of the model for finetuning on the raw texts",default="qwensmall")
 parser.add_argument("-ds","--dataset", type=str,default='pubmed',help="Dataset name")
-parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=1024)
+parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=2048)
 parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter",default="full_parameter")
-parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=1750)
+parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=2500)
 parser.add_argument("-co","--chunk_overlap",type=int, help="Chunksize overlap of the raw texts",default=100)
 parser.add_argument("-tbs","--tokenizer_batch_size",type=int, help="Batch size of tokenization",default=2000)
 parser.add_argument("-np","--num_proc",type=int, help="number of processes",default=4)
@@ -104,7 +104,8 @@ def main(all_text_list):
         elif args.model == "qwensmall":
             qwen_model = "Qwen/Qwen1.5-0.5B"
         tokenizer = Qwen2Tokenizer.from_pretrained(qwen_model,trust_remote_code=True)
-        model = Qwen2ForCausalLM.from_pretrained(qwen_model,trust_remote_code=True,attn_implementation="flash_attention_2")
+        # model = Qwen2ForCausalLM.from_pretrained(qwen_model,trust_remote_code=True,attn_implementation="flash_attention_2",torch_dtype=torch.bfloat16)
+        model = Qwen2ForCausalLM.from_pretrained(qwen_model,trust_remote_code=True)
         if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
             peft_config = LoraConfig(inference_mode=False, target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                                 "gate_proj", "up_proj", "down_proj"],r=args.rank, lora_alpha=args.alpha, lora_dropout=0.0)
@@ -114,6 +115,7 @@ def main(all_text_list):
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
         model = AutoModelForCausalLM.from_pretrained("gpt2")
         # if args.finetuning_type == "qlora" or args.finetuning_type == "lora":
+    model.to("cuda:0")
 
     lm_datasets = tokenize_dataset(all_text_list,tokenizer)
     
@@ -152,8 +154,9 @@ def main(all_text_list):
 if __name__ == "__main__":
     # import json
     if args.dataset == 'pubmed':
-        with open("data/pubmed.txt","r") as f:
-            all_text_list = f.readlines()
+        with open("data/pubmed_subset.txt","r") as f:
+            pubmed_text = f.read()
+        all_text_list = pubmed_text.split("<END>")[:-1]
     elif args.dataset == 'wiki':
         with open("data/wikipedia_filtered.txt","r") as f:
             wiki_data = f.read()
