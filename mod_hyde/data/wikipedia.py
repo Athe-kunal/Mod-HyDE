@@ -3,6 +3,8 @@ import wikipediaapi
 import backoff
 import requests
 from datasets import load_dataset
+import re
+import nltk
 hotpot_qa = load_dataset("hotpot_qa","distractor")
 val_subset = hotpot_qa['validation']['context']
 titles = []
@@ -10,7 +12,18 @@ for sd in val_subset:
     titles.extend(sd['title'])
 
 wikipedia_module = wikipediaapi.Wikipedia("HyDE-Project (athekunal@gmail.com)", "en")
-
+def preprocess_wikipedia_text(line:str):
+    line = re.sub('==REFERENCES==', '', line)
+    line = re.sub('== References ==', '', line)
+    line = re.sub('== Notes ==', '', line)
+    line = re.sub('== Notes and references ==', '', line)
+    line = re.sub(r'ISBN.*', '', line)
+    line = re.sub(r'(https?:\S+?)/.*', '', line)
+    return line
+    # words_list = nltk.word_tokenize(line)
+    # english_words_list = [word for word in words_list if word.lower() in english_words]
+    # english_text = ' '.join(english_words_list)
+    # return english_text
 @backoff.on_exception(backoff.expo,requests.exceptions.Timeout,max_tries=5,max_time=30)
 def get_wikipedia(title):
     page_py = wikipedia_module.page(title)
