@@ -1,1 +1,0 @@
-BLOCK_SIZE = 128

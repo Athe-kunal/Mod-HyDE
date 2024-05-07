@@ -14,7 +14,7 @@ import json
 parser = argparse.ArgumentParser(description='Finetune the model')
 parser.add_argument("-m","--model", type=str,help="Name of the model for finetuning on the raw texts",default="qwensmall")
 parser.add_argument("-ds","--dataset", type=str,default='pubmed',help="Dataset name")
-parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=2048)
+parser.add_argument("-bls","--block_size", type=int, help="Block size for the finetuning",default=768)
 parser.add_argument("-ft","--finetuning_type", type=str, help="Finetuning type out of lora, qlora and full-parameter",default="full_parameter")
 parser.add_argument("-cs","--chunk_size",type=int, help="Chunksize of the raw texts",default=2500)
 parser.add_argument("-co","--chunk_overlap",type=int, help="Chunksize overlap of the raw texts",default=100)
