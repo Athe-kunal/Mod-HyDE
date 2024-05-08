@@ -6,3 +6,4 @@ wikipedia_data_val.csv
 wikipedia_data.csv
 stackexchange_data.csv
 Filtered_wikipedia.csv
+.env
